@@ -173,6 +173,14 @@ typedef enum : NSUInteger {
 
 #pragma mark - GMImagePickerControllerDelegate
 
+- (NSString*)tempFilePath
+{
+    NSString* docsPath = [NSTemporaryDirectory()stringByStandardizingPath];
+    NSString* filePath = [NSString stringWithFormat:@"%@/%@.%@", docsPath, [[NSUUID UUID] UUIDString], @"jpg"];
+
+    return filePath;
+}
+
 - (void)assetsPickerController:(GMImagePickerController *)picker didFinishPickingAssets:(NSArray *)fetchArray
 {
     [picker.presentingViewController dismissViewControllerAnimated:YES completion:nil];
@@ -181,12 +189,8 @@ typedef enum : NSUInteger {
 
     NSMutableArray * result_all = [[NSMutableArray alloc] init];
     CGSize targetSize = CGSizeMake(self.width, self.height);
-    NSFileManager* fileMgr = [[NSFileManager alloc] init];
-    NSString* docsPath = [NSTemporaryDirectory()stringByStandardizingPath];
 
     NSError* err = nil;
-    int i = 1;
-    NSString* filePath;
     CDVPluginResult* result = nil;
 
     for (GMFetchItem *item in fetchArray) {
@@ -194,10 +198,8 @@ typedef enum : NSUInteger {
         if ( !item.image_fullsize ) {
             continue;
         }
-
-        do {
-            filePath = [NSString stringWithFormat:@"%@/%@%03d.%@", docsPath, CDV_PHOTO_PREFIX, i++, @"jpg"];
-        } while ([fileMgr fileExistsAtPath:filePath]);
+        
+        NSString* filePath = [self tempFilePath];
 
         NSData* data = nil;
         if (self.width == 0 && self.height == 0) {
@@ -209,6 +211,18 @@ typedef enum : NSUInteger {
                 if (self.quality == 100) {
                     // no scaling, no downsampling, this is the fastest option
                     [result_all addObject:item.image_fullsize];
+                    
+                    NSString* thumbFilePath = [self tempFilePath];
+                    UIImage* image = [UIImage imageNamed:item.image_fullsize];
+                    UIImage* scaledImage = [self imageByScalingNotCroppingForSize:image toSize:CGSizeMake(200, 0)];
+                    NSData* thumbData = UIImageJPEGRepresentation(scaledImage, 1);
+                    
+                    if (![thumbData writeToFile:thumbFilePath options:NSAtomicWrite error:&err]) {
+                        result = [CDVPluginResult resultWithStatus:CDVCommandStatus_IO_EXCEPTION messageAsString:[err localizedDescription]];
+                    } else {
+                        [result_all addObject:thumbFilePath];
+                    }
+                    
                 } else {
                     // resample first
                     UIImage* image = [UIImage imageNamed:item.image_fullsize];

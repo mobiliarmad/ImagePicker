@@ -490,10 +490,7 @@ NSString * const GMGridViewCellIdentifier = @"GMGridViewCellIdentifier";
             
             //asset.image_fullsize = result;
             
-            NSString * filePath;
-            do {
-                filePath = [NSString stringWithFormat:@"%@/%@%03d.%@", docsPath, CDV_PHOTO_PREFIX, docCount++, @"jpg"];
-            } while ([fileMgr fileExistsAtPath:filePath]);
+            NSString * filePath = [NSString stringWithFormat:@"%@/%@.%@", docsPath, [[NSUUID UUID] UUIDString], @"jpg"];
             
             fetch_item.be_saving_img = true;
             
